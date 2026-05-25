@@ -1,11 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
-import nodemailer from "nodemailer";
+// nodemailer imported dynamically in sendWeeklyEmail
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export const VIDEOS = [
   { id: "1",  title: "I have to go to nyc for an emergency",                        views: 3389,   hashtags: [] },
-  { id: "2",  title: "Chori sanche Vayera yes and idc",                             views: 3070,   hashtags: ["nepali"] },
+  { id: "2",  title: "Chori sanche Valera yes and idc",                             views: 3070,   hashtags: ["nepali"] },
   { id: "3",  title: "Create aesthetic photos",                                      views: 16500,  hashtags: ["aesthetic"] },
   { id: "4",  title: "Are nepali international students cooked?",                    views: 156800, hashtags: ["nepali", "internationalstudent"] },
   { id: "5",  title: "Literally the mood",                                           views: 3083,   hashtags: [] },
@@ -201,7 +201,8 @@ export async function sendWeeklyEmail(brief: WeeklyBrief): Promise<void> {
   </p>
 </div></body></html>`;
 
-  const transporter = nodemailer.createTransport({
+  const nodemailer = await import("nodemailer");
+  const transporter = nodemailer.default.createTransport({
     service: "gmail",
     auth: { user: fromEmail, pass: appPassword },
   });
