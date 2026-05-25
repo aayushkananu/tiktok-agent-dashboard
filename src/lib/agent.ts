@@ -1,40 +1,26 @@
 import Anthropic from "@anthropic-ai/sdk";
+import nodemailer from "nodemailer";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export const VIDEOS: Video[] = [
-  { id: "1",  title: "I have to go to nyc for an emergency",                              views: 3389,   likes: 0, hashtags: [] },
-  { id: "2",  title: "Chori sanche Valera yes and idc",                                   views: 3070,   likes: 0, hashtags: ["nepali"] },
-  { id: "3",  title: "Create aesthetic photos",                                            views: 16500,  likes: 0, hashtags: ["aesthetic", "photography"] },
-  { id: "4",  title: "Are nepali international students cooked?",                          views: 156800, likes: 0, hashtags: ["nepali", "internationalstudent"] },
-  { id: "5",  title: "Literally the mood",                                                 views: 3083,   likes: 0, hashtags: [] },
-  { id: "6",  title: "Do. What. You. Want. But. Youre. Never. Gonna break me",            views: 2770,   likes: 0, hashtags: [] },
-  { id: "7",  title: "Things only nepali people do",                                       views: 9501,   likes: 0, hashtags: ["nepali", "nepalitiktok"] },
-  { id: "8",  title: "I made $25000 in 3 months as a nepali international student",       views: 135400, likes: 0, hashtags: ["nepali", "internationalstudent", "money"] },
-  { id: "9",  title: "I made $25000 in 3 months as a nepali international student (2)",   views: 10000,  likes: 0, hashtags: ["nepali", "internationalstudent", "money"] },
-  { id: "10", title: "Get unready with me while ranting about insecurities",               views: 13000,  likes: 0, hashtags: ["grwm", "insecurities"] },
-  { id: "11", title: "Episode 1 of will I make it in America: building a portfolio",       views: 26700,  likes: 0, hashtags: ["internationalstudent", "techlife"] },
-  { id: "12", title: "Pov: finally finishing my app",                                      views: 3150,   likes: 0, hashtags: ["tech", "coding"] },
-  { id: "13", title: "Unemployed me after graduation",                                     views: 179000, likes: 0, hashtags: ["graduation", "unemployed", "internationalstudent"] },
-  { id: "14", title: "Q/A",                                                                views: 4337,   likes: 0, hashtags: [] },
-  { id: "15", title: "Gym vlog",                                                           views: 20500,  likes: 0, hashtags: ["gymvlog"] },
-  { id: "16", title: "Day in my life vlog",                                                views: 6114,   likes: 0, hashtags: ["dayinmylife"] },
-];
-
-export interface Video {
-  id: string;
-  title: string;
-  views: number;
-  likes: number;
-  hashtags: string[];
-  url?: string;
-}
-
-export interface WeeklyBrief {
-  week: string;
-  analysis: string;
-  generatedAt: string;
-}
+export const VIDEOS = [
+  { id: "1",  title: "I have to go to nyc for an emergency",                        views: 3389,   hashtags: [] },
+  { id: "2",  title: "Chori sanche Vayera yes and idc",                             views: 3070,   hashtags: ["nepali"] },
+  { id: "3",  title: "Create aesthetic photos",                                      views: 16500,  hashtags: ["aesthetic"] },
+  { id: "4",  title: "Are nepali international students cooked?",                    views: 156800, hashtags: ["nepali", "internationalstudent"] },
+  { id: "5",  title: "Literally the mood",                                           views: 3083,   hashtags: [] },
+  { id: "6",  title: "Do. What. You. Want. But. Youre. Never. Gonna break me",      views: 2770,   hashtags: [] },
+  { id: "7",  title: "Things only nepali people do",                                 views: 9501,   hashtags: ["nepali"] },
+  { id: "8",  title: "I made $25000 in 3 months as a nepali international student", views: 135400, hashtags: ["nepali", "money"] },
+  { id: "9",  title: "I made $25000 in 3 months (repost)",                          views: 10000,  hashtags: ["nepali", "money"] },
+  { id: "10", title: "Get unready with me while ranting about insecurities",         views: 13000,  hashtags: ["grwm"] },
+  { id: "11", title: "Episode 1: will I make it in America",                         views: 26700,  hashtags: ["internationalstudent"] },
+  { id: "12", title: "Pov: finally finishing my app",                                views: 3150,   hashtags: ["tech"] },
+  { id: "13", title: "Unemployed me after graduation",                               views: 179000, hashtags: ["graduation", "unemployed"] },
+  { id: "14", title: "Q/A",                                                          views: 4337,   hashtags: [] },
+  { id: "15", title: "Gym vlog",                                                     views: 20500,  hashtags: ["gymvlog"] },
+  { id: "16", title: "Day in my life vlog",                                          views: 6114,   hashtags: ["dayinmylife"] },
+] as const;
 
 export interface AudienceInsights {
   generatedAt: string;
@@ -47,12 +33,22 @@ export interface AudienceInsights {
   };
 }
 
-// ─── Audience Analysis ────────────────────────────────────────────────────────
+export interface WeeklyBrief {
+  week: string;
+  analysis: string;
+  generatedAt: string;
+}
+
 export async function generateAudienceAnalysis(): Promise<AudienceInsights> {
   const sorted = [...VIDEOS].sort((a, b) => b.views - a.views);
   const totalViews = VIDEOS.reduce((s, v) => s + v.views, 0);
 
-  const prompt = `You are a TikTok content strategist for @lalmooon.
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2000,
+    messages: [{
+      role: "user",
+      content: `You are a TikTok content strategist for @lalmooon.
 
 TOP VIDEOS:
 ${sorted.slice(0, 10).map((v, i) => `${i + 1}. "${v.title}" - ${v.views.toLocaleString()} views`).join("\n")}
@@ -60,9 +56,9 @@ ${sorted.slice(0, 10).map((v, i) => `${i + 1}. "${v.title}" - ${v.views.toLocale
 TOTAL VIDEOS: ${VIDEOS.length}
 TOTAL VIEWS: ${totalViews.toLocaleString()}
 
-AUDIENCE: Two groups:
-1. Women ages 18-30 broadly - career anxiety, financial independence, self-improvement, confidence, burnout, relationships
-2. Nepali international students and South Asian diaspora in the US - OPT/H1B anxiety, making money on a visa, post-graduation survival, identity, belonging
+AUDIENCE:
+1. Women ages 18-30 broadly - career anxiety, financial independence, self-improvement, confidence, burnout
+2. Nepali international students and South Asian diaspora in the US - OPT/H1B anxiety, post-graduation survival, identity
 
 Provide a sharp audience analysis with these sections:
 
@@ -81,12 +77,8 @@ What is underperforming and why.
 ## Growth Opportunities
 2-3 untapped angles this creator has not tried yet.
 
-Be direct. Reference actual video titles and numbers.`;
-
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2000,
-    messages: [{ role: "user", content: prompt }],
+Be direct. Reference actual video titles and numbers.`
+    }],
   });
 
   return {
@@ -101,27 +93,27 @@ Be direct. Reference actual video titles and numbers.`;
   };
 }
 
-// ─── Weekly Trend Brief ───────────────────────────────────────────────────────
 export async function generateWeeklyBrief(): Promise<WeeklyBrief> {
   const sorted = [...VIDEOS].sort((a, b) => b.views - a.views);
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  // Fetch trends via web search
-  const searchQueries = [
+  let searchSummary = "";
+  const queries = [
     "TikTok trending sounds viral this week 2026",
     "TikTok trending topics women career money 2026",
     "nepali international students USA news 2026",
   ];
 
-  let searchSummary = "";
-  for (const q of searchQueries) {
+  for (const q of queries) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const searchTools: any[] = [{ type: "web_search_20250305", name: "web_search", max_uses: 1 }];
       const res = await client.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 500,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 1 }],
+        tools: searchTools,
         messages: [{ role: "user", content: `Search: ${q}. Summarize in 3 sentences.` }],
       });
       const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("");
@@ -129,7 +121,12 @@ export async function generateWeeklyBrief(): Promise<WeeklyBrief> {
     } catch { /* skip failed searches */ }
   }
 
-  const prompt = `You are a TikTok content strategist for @lalmooon.
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2000,
+    messages: [{
+      role: "user",
+      content: `You are a TikTok content strategist for @lalmooon.
 
 CREATOR TOP CONTENT:
 ${sorted.slice(0, 5).map((v) => `"${v.title}" - ${v.views.toLocaleString()} views`).join("\n")}
@@ -157,14 +154,10 @@ Ranked by predicted performance. Hook (first 3 seconds), format, hashtags, best 
 Single highest-urgency trend peaking right now.
 
 ## Audience Mood This Week
-Emotional temperature of the audience. What are they feeling and searching for.
+Emotional temperature of the audience right now.
 
-Be specific and direct.`;
-
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2000,
-    messages: [{ role: "user", content: prompt }],
+Be specific and direct.`
+    }],
   });
 
   return {
@@ -174,18 +167,15 @@ Be specific and direct.`;
   };
 }
 
-// ─── Send Email ───────────────────────────────────────────────────────────────
 export async function sendWeeklyEmail(brief: WeeklyBrief): Promise<void> {
-  const nodemailer = await import("nodemailer");
   const fromEmail = process.env.FROM_EMAIL!;
   const toEmail = process.env.TO_EMAIL!;
   const appPassword = process.env.GMAIL_APP_PASSWORD!;
 
   if (!appPassword) throw new Error("GMAIL_APP_PASSWORD not set");
 
-  const safe = (str: string) => str
-    .replace(/[\u{10000}-\u{10FFFF}]/gu, "")
-    .replace(/[\uD800-\uDFFF]/g, "");
+  const safe = (str: string) =>
+    str.replace(/[\uD800-\uDFFF]/g, "");
 
   const body = safe(brief.analysis)
     .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
@@ -211,7 +201,7 @@ export async function sendWeeklyEmail(brief: WeeklyBrief): Promise<void> {
   </p>
 </div></body></html>`;
 
-  const transporter = nodemailer.default.createTransport({
+  const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: fromEmail, pass: appPassword },
   });
